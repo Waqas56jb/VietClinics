@@ -11,10 +11,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-// CORS — set FRONTEND_URL in .env to lock down to your deployed frontend origin.
-// Defaults to "*" so local dev (file:// or any static host) works out of the box.
-const corsOrigin = process.env.FRONTEND_URL || "*";
-app.use(cors({ origin: corsOrigin }));
+// CORS — fully public. Any frontend (file://, any domain, any port) can call this API.
+// Explicit config so preflight OPTIONS requests are also handled.
+const corsOptions = {
+  origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // ─── OpenAI Client ────────────────────────────────────────────────────────────
@@ -226,5 +232,5 @@ app.listen(PORT, () => {
   console.log(`📡 Chat:   POST http://localhost:${PORT}/api/chat`);
   console.log(`❤️  Health: GET  http://localhost:${PORT}/api/health`);
   console.log(`🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? "✓ Loaded" : "✗ MISSING — check .env"}`);
-  console.log(`🌐 CORS origin: ${corsOrigin}\n`);
+  console.log(`🌐 CORS: public (allow all origins)\n`);
 });
