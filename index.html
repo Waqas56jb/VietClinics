@@ -765,7 +765,10 @@ body::before {
 //  VIETCLINICS AI CHATBOT — FRONTEND LOGIC
 // ═══════════════════════════════════════════════════════
 
-const API_ENDPOINT = '/api/chat';
+// Point this at your deployed backend (e.g. "https://vietclinics-api.onrender.com").
+// Leave empty ("") for local dev when the backend serves the page on the same origin.
+const API_BASE_URL = window.VIETCLINICS_API_URL || 'http://localhost:3000';
+const API_ENDPOINT = `${API_BASE_URL}/api/chat`;
 
 // Conversation history (for multi-turn context)
 let messages = [];

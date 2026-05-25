@@ -1,22 +1,21 @@
 // VietClinics AI Chatbot — server.js
-// Node.js + Express + OpenAI
-// Place this in /server/server.js
+// Node.js + Express + OpenAI (API-only backend; deploy this folder independently)
 // Run: node server.js
 
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const OpenAI = require("openai");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors());
+// CORS — set FRONTEND_URL in .env to lock down to your deployed frontend origin.
+// Defaults to "*" so local dev (file:// or any static host) works out of the box.
+const corsOrigin = process.env.FRONTEND_URL || "*";
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
-// Serve the frontend (index.html) from the parent directory
-app.use(express.static(path.join(__dirname, "..")));
 
 // ─── OpenAI Client ────────────────────────────────────────────────────────────
 const openai = new OpenAI({
@@ -210,14 +209,22 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "VietClinics AI Chatbot", timestamp: new Date().toISOString() });
 });
 
-// ─── Fallback: Serve index.html ───────────────────────────────────────────────
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "index.html"));
+// ─── Root: API info (no frontend served from this process) ────────────────────
+app.get("/", (req, res) => {
+  res.json({
+    service: "VietClinics AI Chatbot API",
+    endpoints: {
+      health: "GET /api/health",
+      chat: "POST /api/chat",
+    },
+  });
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n✅ VietClinics Chatbot Server running on http://localhost:${PORT}`);
-  console.log(`📡 API endpoint: http://localhost:${PORT}/api/chat`);
-  console.log(`🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? "✓ Loaded" : "✗ MISSING — check .env"}\n`);
+  console.log(`\n✅ VietClinics API running on http://localhost:${PORT}`);
+  console.log(`📡 Chat:   POST http://localhost:${PORT}/api/chat`);
+  console.log(`❤️  Health: GET  http://localhost:${PORT}/api/health`);
+  console.log(`🔑 OpenAI Key: ${process.env.OPENAI_API_KEY ? "✓ Loaded" : "✗ MISSING — check .env"}`);
+  console.log(`🌐 CORS origin: ${corsOrigin}\n`);
 });
