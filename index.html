@@ -771,8 +771,13 @@ body::before {
 const API_BASE_URL = window.VIETCLINICS_API_URL || 'https://viet-clinics-backend.vercel.app';
 const API_ENDPOINT = `${API_BASE_URL}/api/chat`;
 
-// Conversation history (for multi-turn context)
-let messages = [];
+// Conversation history (for multi-turn context).
+// Persisted in localStorage and capped at the last MAX_HISTORY messages
+// (matches the server-side slice in server.js so the user sees the same
+// context the model receives).
+const HISTORY_KEY  = 'vietclinics_history_v1';
+const MAX_HISTORY  = 20;
+let messages = loadHistory();
 let isLoading = false;
 let welcomeRemoved = false;
 
@@ -781,6 +786,41 @@ const messagesArea = document.getElementById('messagesArea');
 const chatInput    = document.getElementById('chatInput');
 const sendBtn      = document.getElementById('sendBtn');
 const welcomeScreen = document.getElementById('welcomeScreen');
+
+// ─── History persistence ───────────────────────────────
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(-MAX_HISTORY) : [];
+  } catch (e) {
+    console.warn('Could not load chat history:', e);
+    return [];
+  }
+}
+
+function saveHistory() {
+  try {
+    messages = messages.slice(-MAX_HISTORY);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
+  } catch (e) {
+    console.warn('Could not save chat history:', e);
+  }
+}
+
+function restoreHistory() {
+  if (!messages.length) return;
+  // Hide welcome screen since we already have a conversation
+  if (welcomeScreen) {
+    welcomeScreen.remove();
+    welcomeRemoved = true;
+  }
+  for (const m of messages) {
+    const role = m.role === 'assistant' ? 'bot' : 'user';
+    appendMessage(role, m.content);
+  }
+}
 
 // ─── Auto-resize textarea ──────────────────────────────
 chatInput.addEventListener('input', () => {
@@ -816,6 +856,7 @@ async function sendMessage() {
   // Add user message to UI and history
   appendMessage('user', text);
   messages.push({ role: 'user', content: text });
+  saveHistory();
 
   // Show typing indicator
   const typingEl = showTyping();
@@ -839,6 +880,7 @@ async function sendMessage() {
 
     const reply = data.reply;
     messages.push({ role: 'assistant', content: reply });
+    saveHistory();
 
     // Extract quick replies from reply or generate contextual ones
     const quickReplies = extractQuickReplies(reply, text);
@@ -1012,6 +1054,9 @@ function showToast(msg) {
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3500);
 }
+
+// ─── Restore previous conversation (last MAX_HISTORY messages) ────────
+restoreHistory();
 
 // ─── Auto-focus on desktop ────────────────────────────
 if (window.innerWidth >= 768) {
